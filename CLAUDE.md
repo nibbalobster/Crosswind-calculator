@@ -19,7 +19,9 @@ It is also a **practice project**. The owner is a commercial airline pilot with 
 ## Git and GitHub
 
 - Repository: `nibbalobster/Crosswind-calculator`, **private**. Default branch `main`; day-to-day work happens on the `First-changes` branch and reaches `main` through a pull request. Earlier work was merged this way.
-- Only commit and push to the branch you were given, and only open a pull request when asked. After pushing, say what changed and that it is not on `main` until merged.
+- After each finished and tested change, commit and push it to the work branch automatically, with a clear message, and tell the owner what changed. Cloud sessions are temporary, so uncommitted work would be lost; the pull request is where the owner reviews.
+- Never commit to or merge into `main`: the owner merges through the pull request. Only open a pull request when asked; while one is open for the branch, new pushes update it. After pushing, say that the change is not on `main` until merged.
+- If the owner says not to commit something yet (e.g. while experimenting), hold off until they say so.
 - GitHub Pages (automatic hosting of the page) is not available while the repo is private on a free plan. If they ask how to get a public web link, explain that trade-off rather than assuming they want the repo made public.
 
 ## Running and checking it
