@@ -1,0 +1,303 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Crosswind Calculator</title>
+<style>
+  :root {
+    --bg: #f5f6f8;
+    --card: #ffffff;
+    --text: #15202b;
+    --muted: #64707d;
+    --line: #d9dee4;
+    --accent: #0b6bcb;
+    --runway: #2b323a;
+    --marking: #ffffff;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg: #0f1419;
+      --card: #1a2129;
+      --text: #eef2f6;
+      --muted: #93a0ad;
+      --line: #2c3742;
+      --accent: #4da3ff;
+      --runway: #3a444f;
+      --marking: #eef2f6;
+    }
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    background: var(--bg);
+    color: var(--text);
+    font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  }
+  main {
+    max-width: 480px;
+    margin: 0 auto;
+    padding: 20px 16px 28px;
+  }
+  h1 {
+    margin: 0 0 16px;
+    font-size: 1.4rem;
+    text-align: center;
+  }
+  .inputs {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 10px;
+  }
+  label {
+    display: block;
+    font-size: 0.75rem;
+    color: var(--muted);
+  }
+  input {
+    width: 100%;
+    margin-top: 4px;
+    padding: 10px 8px;
+    font: inherit;
+    font-size: 1.25rem;
+    font-variant-numeric: tabular-nums;
+    text-align: center;
+    color: var(--text);
+    background: var(--card);
+    border: 1px solid var(--line);
+    border-radius: 10px;
+  }
+  input:focus {
+    outline: 2px solid var(--accent);
+    outline-offset: 1px;
+  }
+  .compass {
+    display: block;
+    width: 100%;
+    max-width: 340px;
+    margin: 18px auto;
+  }
+  .ring { fill: none; stroke: var(--line); stroke-width: 1.5; }
+  .notch { stroke: var(--muted); stroke-width: 1.5; stroke-linecap: round; }
+  .cardinal { fill: var(--muted); font-size: 9px; font-weight: 600; text-anchor: middle; }
+  .surface { fill: var(--runway); }
+  .marking { fill: var(--marking); }
+  .rwy-number { fill: var(--marking); font-size: 11px; font-weight: 700; text-anchor: middle; }
+  .wind { fill: var(--accent); }
+  #runway, #wind {
+    transform-origin: 100px 100px;
+    transition: transform 0.4s ease;
+  }
+  .results {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 10px;
+  }
+  .tile {
+    background: var(--card);
+    border: 1px solid var(--line);
+    border-radius: 14px;
+    padding: 12px 8px 14px;
+    text-align: center;
+  }
+  .tile .name {
+    font-size: 0.85rem;
+    color: var(--muted);
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+  }
+  .tile .value {
+    font-size: clamp(3rem, 16vw, 5rem);
+    font-weight: 700;
+    line-height: 1.1;
+    font-variant-numeric: tabular-nums;
+  }
+  .tile .unit {
+    font-size: 0.9rem;
+    color: var(--muted);
+    min-height: 1.2em;
+  }
+  footer {
+    margin-top: 22px;
+    font-size: 0.8rem;
+    color: var(--muted);
+    text-align: center;
+  }
+</style>
+</head>
+<body>
+<main>
+  <h1>Crosswind Calculator</h1>
+
+  <div class="inputs">
+    <label>Runway heading (°)
+      <input id="heading" type="number" inputmode="numeric" min="0" max="360" value="270">
+    </label>
+    <label>Wind direction (°)
+      <input id="direction" type="number" inputmode="numeric" min="0" max="360" value="300">
+    </label>
+    <label>Wind speed (kt)
+      <input id="speed" type="number" inputmode="numeric" min="0" value="15">
+    </label>
+  </div>
+
+  <svg class="compass" viewBox="0 0 200 200" role="img" aria-label="Runway and wind direction">
+    <circle class="ring" cx="100" cy="100" r="86"/>
+    <text class="cardinal" x="100" y="9">N</text>
+    <text class="cardinal" x="194" y="103">E</text>
+    <text class="cardinal" x="100" y="198">S</text>
+    <text class="cardinal" x="6" y="103">W</text>
+    <line class="notch" x1="100" y1="9" x2="100" y2="19" transform="rotate(45 100 100)"/>
+    <line class="notch" x1="100" y1="9" x2="100" y2="19" transform="rotate(135 100 100)"/>
+    <line class="notch" x1="100" y1="9" x2="100" y2="19" transform="rotate(225 100 100)"/>
+    <line class="notch" x1="100" y1="9" x2="100" y2="19" transform="rotate(315 100 100)"/>
+
+    <g id="runway">
+      <rect class="surface" x="84" y="28" width="32" height="144" rx="2"/>
+      <!-- side stripes -->
+      <rect class="marking" x="85.2" y="30" width="0.7" height="140"/>
+      <rect class="marking" x="114.1" y="30" width="0.7" height="140"/>
+      <!-- centreline -->
+      <rect class="marking" x="99.25" y="54" width="1.5" height="8"/>
+      <rect class="marking" x="99.25" y="68" width="1.5" height="8"/>
+      <rect class="marking" x="99.25" y="82" width="1.5" height="8"/>
+      <rect class="marking" x="99.25" y="96" width="1.5" height="8"/>
+      <rect class="marking" x="99.25" y="110" width="1.5" height="8"/>
+      <rect class="marking" x="99.25" y="124" width="1.5" height="8"/>
+      <rect class="marking" x="99.25" y="138" width="1.5" height="8"/>
+      <!-- markings for one end, mirrored to the other end below -->
+      <g id="rwy-end" class="marking">
+        <!-- threshold -->
+        <rect x="87" y="162" width="2" height="7"/>
+        <rect x="90" y="162" width="2" height="7"/>
+        <rect x="93" y="162" width="2" height="7"/>
+        <rect x="96" y="162" width="2" height="7"/>
+        <rect x="102" y="162" width="2" height="7"/>
+        <rect x="105" y="162" width="2" height="7"/>
+        <rect x="108" y="162" width="2" height="7"/>
+        <rect x="111" y="162" width="2" height="7"/>
+        <!-- touchdown zone, triple bars -->
+        <rect x="87.5" y="138" width="2" height="7"/>
+        <rect x="90.5" y="138" width="2" height="7"/>
+        <rect x="93.5" y="138" width="2" height="7"/>
+        <rect x="104.5" y="138" width="2" height="7"/>
+        <rect x="107.5" y="138" width="2" height="7"/>
+        <rect x="110.5" y="138" width="2" height="7"/>
+        <!-- aiming point -->
+        <rect x="88.5" y="122" width="6" height="11"/>
+        <rect x="105.5" y="122" width="6" height="11"/>
+        <!-- touchdown zone, double bars -->
+        <rect x="89" y="110" width="2" height="7"/>
+        <rect x="92.5" y="110" width="2" height="7"/>
+        <rect x="105.5" y="110" width="2" height="7"/>
+        <rect x="109" y="110" width="2" height="7"/>
+      </g>
+      <use href="#rwy-end" transform="rotate(180 100 100)"/>
+      <!-- the number you see when lined up on this heading sits at the near end -->
+      <text id="num-near" class="rwy-number" x="100" y="158">27</text>
+      <text id="num-far" class="rwy-number" x="100" y="158" transform="rotate(180 100 100)">09</text>
+    </g>
+
+    <g id="wind">
+      <path class="wind" d="M100 30 L92 16 L97 16 L97 2 L103 2 L103 16 L108 16 Z"/>
+    </g>
+  </svg>
+
+  <div class="results">
+    <div class="tile">
+      <div class="name" id="head-name">Headwind</div>
+      <div class="value" id="head-value">–</div>
+      <div class="unit">kt</div>
+    </div>
+    <div class="tile">
+      <div class="name">Crosswind</div>
+      <div class="value" id="cross-value">–</div>
+      <div class="unit" id="cross-side">kt</div>
+    </div>
+  </div>
+
+  <footer>Learning project — not for operational use.</footer>
+</main>
+
+<script>
+  // Returns { headwind, crosswind } in knots.
+  // headwind: positive = headwind, negative = tailwind.
+  // crosswind: positive = from the right, negative = from the left.
+  function windComponents(runwayHeading, windDirection, windSpeed) {
+    const angle = (windDirection - runwayHeading) * Math.PI / 180;
+    return {
+      headwind: windSpeed * Math.cos(angle),
+      crosswind: windSpeed * Math.sin(angle),
+    };
+  }
+
+  const el = (id) => document.getElementById(id);
+  const headingInput = el('heading');
+  const directionInput = el('direction');
+  const speedInput = el('speed');
+
+  // Keep a running angle so the symbol turns the short way round (350° → 010°).
+  const turned = { runway: 0, wind: 0 };
+  function rotateTo(id, degrees) {
+    const delta = ((degrees - turned[id]) % 360 + 540) % 360 - 180;
+    turned[id] += delta;
+    el(id).style.transform = `rotate(${turned[id]}deg)`;
+  }
+
+  function readDegrees(input) {
+    const value = parseFloat(input.value);
+    return value >= 0 && value <= 360 ? value : null;
+  }
+
+  function runwayNumber(heading) {
+    const n = Math.round(heading / 10) % 36 || 36;
+    return String(n).padStart(2, '0');
+  }
+
+  // sin/cos leave tiny errors (7.4999999 instead of 7.5), so trim them before
+  // rounding, and round halves away from zero so left and right match.
+  function roundKnots(value) {
+    const clean = parseFloat(Math.abs(value).toFixed(6));
+    return Math.sign(value) * Math.round(clean);
+  }
+
+  function showBlank() {
+    el('head-name').textContent = 'Headwind';
+    el('head-value').textContent = '–';
+    el('cross-value').textContent = '–';
+    el('cross-side').textContent = 'kt';
+  }
+
+  function update() {
+    const heading = readDegrees(headingInput);
+    const direction = readDegrees(directionInput);
+    const speed = parseFloat(speedInput.value);
+
+    if (heading !== null) {
+      rotateTo('runway', heading);
+      el('num-near').textContent = runwayNumber(heading);
+      el('num-far').textContent = runwayNumber(heading + 180);
+    }
+    if (direction !== null) rotateTo('wind', direction);
+
+    if (heading === null || direction === null || !(speed >= 0)) return showBlank();
+
+    const result = windComponents(heading, direction, speed);
+    if (!result) return showBlank();
+
+    const head = roundKnots(result.headwind);
+    const cross = roundKnots(result.crosswind);
+
+    el('head-name').textContent = head < 0 ? 'Tailwind' : 'Headwind';
+    el('head-value').textContent = Math.abs(head);
+    el('cross-value').textContent = Math.abs(cross);
+    el('cross-side').textContent =
+      cross > 0 ? 'kt from right' : cross < 0 ? 'kt from left' : 'kt';
+  }
+
+  [headingInput, directionInput, speedInput].forEach((input) =>
+    input.addEventListener('input', update));
+  update();
+</script>
+</body>
+</html>
