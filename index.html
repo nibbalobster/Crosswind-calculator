@@ -49,12 +49,13 @@
     grid-template-columns: repeat(3, 1fr);
     gap: 10px;
   }
+  .inputs + .inputs { margin-top: 10px; }
   label {
     display: block;
     font-size: 0.75rem;
     color: var(--muted);
   }
-  input {
+  input, select {
     width: 100%;
     margin-top: 4px;
     padding: 10px 8px;
@@ -67,7 +68,22 @@
     border: 1px solid var(--line);
     border-radius: 10px;
   }
-  input:focus {
+  select { padding: 10px 4px; }
+  input[type=number] { appearance: textfield; -moz-appearance: textfield; }
+  input::-webkit-inner-spin-button,
+  input::-webkit-outer-spin-button { -webkit-appearance: none; margin: 0; }
+  input:disabled, select:disabled { opacity: 0.45; }
+  .pair { display: flex; gap: 4px; }
+  .pair input { flex: 1 1 0; min-width: 0; }
+  .pair input { padding: 10px 2px; }
+  .pair select { flex: 0 0 auto; width: auto; }
+  .hint {
+    margin: 8px 0 0;
+    font-size: 0.75rem;
+    color: var(--muted);
+    text-align: center;
+  }
+  input:focus, select:focus {
     outline: 2px solid var(--accent);
     outline-offset: 1px;
   }
@@ -82,7 +98,15 @@
   .cardinal { fill: var(--muted); font-size: 9px; font-weight: 600; text-anchor: middle; }
   .surface { fill: var(--runway); }
   .marking { fill: var(--marking); }
-  .rwy-number { fill: var(--marking); font-size: 11px; font-weight: 700; text-anchor: middle; }
+  .rwy-number {
+    fill: var(--marking);
+    font-size: 11px;
+    font-weight: 700;
+    text-anchor: middle;
+    transform-box: fill-box;
+    transform-origin: center;
+    transition: transform 0.4s ease;
+  }
   .wind { fill: var(--accent); }
   #runway, #wind {
     transform-origin: 100px 100px;
@@ -112,11 +136,12 @@
     line-height: 1.1;
     font-variant-numeric: tabular-nums;
   }
-  .tile .unit {
+  .tile .unit, .tile .gust {
     font-size: 0.9rem;
     color: var(--muted);
     min-height: 1.2em;
   }
+  .tile .gust { font-weight: 600; }
   footer {
     margin-top: 22px;
     font-size: 0.8rem;
@@ -140,6 +165,27 @@
       <input id="speed" type="number" inputmode="numeric" min="0" value="15">
     </label>
   </div>
+  <div class="inputs">
+    <label>Gust (kt)
+      <input id="gust" type="number" inputmode="numeric" min="0" placeholder="–">
+    </label>
+    <label>Wind is
+      <select id="reference">
+        <option value="magnetic">MAG</option>
+        <option value="true">TRUE</option>
+      </select>
+    </label>
+    <label>Variation (°)
+      <span class="pair">
+        <input id="variation" type="number" inputmode="numeric" min="0" max="180" placeholder="0">
+        <select id="variation-side" aria-label="Variation east or west">
+          <option value="E">E</option>
+          <option value="W">W</option>
+        </select>
+      </span>
+    </label>
+  </div>
+  <p class="hint" id="hint"></p>
 
   <svg class="compass" viewBox="0 0 200 200" role="img" aria-label="Runway and wind direction">
     <circle class="ring" cx="100" cy="100" r="86"/>
@@ -158,13 +204,11 @@
       <rect class="marking" x="85.2" y="30" width="0.7" height="140"/>
       <rect class="marking" x="114.1" y="30" width="0.7" height="140"/>
       <!-- centreline -->
-      <rect class="marking" x="99.25" y="54" width="1.5" height="8"/>
       <rect class="marking" x="99.25" y="68" width="1.5" height="8"/>
       <rect class="marking" x="99.25" y="82" width="1.5" height="8"/>
       <rect class="marking" x="99.25" y="96" width="1.5" height="8"/>
       <rect class="marking" x="99.25" y="110" width="1.5" height="8"/>
       <rect class="marking" x="99.25" y="124" width="1.5" height="8"/>
-      <rect class="marking" x="99.25" y="138" width="1.5" height="8"/>
       <!-- markings for one end, mirrored to the other end below -->
       <g id="rwy-end" class="marking">
         <!-- threshold -->
@@ -186,9 +230,10 @@
         <rect x="109" y="122" width="2" height="7"/>
       </g>
       <use href="#rwy-end" transform="rotate(180 100 100)"/>
-      <!-- the number you see when lined up on this heading sits at the near end -->
-      <text id="num-near" class="rwy-number" x="100" y="158">27</text>
-      <text id="num-far" class="rwy-number" x="100" y="158" transform="rotate(180 100 100)">09</text>
+      <!-- the number you see when lined up on this heading sits at the near end;
+           update() counter-rotates both numbers so they always read upright -->
+      <text id="num-near" class="rwy-number" x="100" y="154">27</text>
+      <text id="num-far" class="rwy-number" x="100" y="54">09</text>
     </g>
 
     <g id="wind">
@@ -201,11 +246,13 @@
       <div class="name" id="head-name">Headwind</div>
       <div class="value" id="head-value">–</div>
       <div class="unit">kt</div>
+      <div class="gust" id="head-gust"></div>
     </div>
     <div class="tile">
       <div class="name">Crosswind</div>
       <div class="value" id="cross-value">–</div>
       <div class="unit" id="cross-side">kt</div>
+      <div class="gust" id="cross-gust"></div>
     </div>
   </div>
 
@@ -228,6 +275,11 @@
   const headingInput = el('heading');
   const directionInput = el('direction');
   const speedInput = el('speed');
+  const gustInput = el('gust');
+  const referenceInput = el('reference');
+  const variationInput = el('variation');
+  const variationSideInput = el('variation-side');
+  const HINT = 'ATIS and tower winds are magnetic; METAR and TAF winds are true.';
 
   // Keep a running angle so the symbol turns the short way round (350° → 010°).
   const turned = { runway: 0, wind: 0 };
@@ -240,6 +292,16 @@
   function readDegrees(input) {
     const value = parseFloat(input.value);
     return value >= 0 && value <= 360 ? value : null;
+  }
+
+  // Signed variation in degrees (east positive), 0 for a magnetic wind,
+  // null if the box holds something out of range. Blank counts as 0.
+  function readVariation() {
+    if (referenceInput.value === 'magnetic') return 0;
+    if (variationInput.value === '') return 0;
+    const value = parseFloat(variationInput.value);
+    if (!(value >= 0 && value <= 180)) return null;
+    return variationSideInput.value === 'E' ? value : -value;
   }
 
   function runwayNumber(heading) {
@@ -259,25 +321,44 @@
     el('head-value').textContent = '–';
     el('cross-value').textContent = '–';
     el('cross-side').textContent = 'kt';
+    el('head-gust').textContent = '';
+    el('cross-gust').textContent = '';
   }
 
   function update() {
     const heading = readDegrees(headingInput);
-    const direction = readDegrees(directionInput);
+    const variation = readVariation();
+    const windInput = readDegrees(directionInput);
     const speed = parseFloat(speedInput.value);
+    const gust = parseFloat(gustInput.value);
+
+    const isTrue = referenceInput.value === 'true';
+    variationInput.disabled = !isTrue;
+    variationSideInput.disabled = !isTrue;
+
+    // Runway headings are magnetic, so a true wind is converted first:
+    // magnetic = true − east variation ("east is least, west is best").
+    const direction = windInput !== null && variation !== null
+      ? ((windInput - variation) % 360 + 360) % 360
+      : null;
+    el('hint').textContent = isTrue && direction !== null
+      ? `Magnetic wind: ${String(Math.round(direction) % 360 || 360).padStart(3, '0')}°`
+      : HINT;
 
     if (heading !== null) {
       rotateTo('runway', heading);
       el('num-near').textContent = runwayNumber(heading);
       el('num-far').textContent = runwayNumber(heading + 180);
+      // Undo the runway's rotation on the numbers so 09 never reads as 60.
+      const upright = `rotate(${-turned.runway}deg)`;
+      el('num-near').style.transform = upright;
+      el('num-far').style.transform = upright;
     }
     if (direction !== null) rotateTo('wind', direction);
 
     if (heading === null || direction === null || !(speed >= 0)) return showBlank();
 
     const result = windComponents(heading, direction, speed);
-    if (!result) return showBlank();
-
     const head = roundKnots(result.headwind);
     const cross = roundKnots(result.crosswind);
 
@@ -286,9 +367,20 @@
     el('cross-value').textContent = Math.abs(cross);
     el('cross-side').textContent =
       cross > 0 ? 'kt from right' : cross < 0 ? 'kt from left' : 'kt';
+
+    // A gust only counts if it is stronger than the steady wind.
+    if (gust > speed) {
+      const peak = windComponents(heading, direction, gust);
+      el('head-gust').textContent = `gust ${Math.abs(roundKnots(peak.headwind))}`;
+      el('cross-gust').textContent = `gust ${Math.abs(roundKnots(peak.crosswind))}`;
+    } else {
+      el('head-gust').textContent = '';
+      el('cross-gust').textContent = '';
+    }
   }
 
-  [headingInput, directionInput, speedInput].forEach((input) =>
+  [headingInput, directionInput, speedInput, gustInput,
+    referenceInput, variationInput, variationSideInput].forEach((input) =>
     input.addEventListener('input', update));
   update();
 </script>

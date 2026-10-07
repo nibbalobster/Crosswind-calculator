@@ -24,20 +24,23 @@ Opening `index.html` directly from disk also works.
 
 ## How index.html fits together
 
-Everything flows through `update()`, which runs on every `input` event and once at load: read the three inputs → rotate the SVG → compute components → write the two result tiles.
+Everything flows through `update()`, which runs on every `input` event and once at load: read the inputs → convert a true wind to magnetic → rotate the SVG → compute components (and gust components) → write the two result tiles.
+
+**Inputs.** Runway heading, wind direction and speed are required. Gust is optional and only shown (as a "gust N" line in each tile) when it is greater than the steady speed. "Wind is" MAG/TRUE: runway headings are magnetic, so a TRUE wind is converted with `magnetic = true − variation` (east positive, from `readVariation`) before anything else uses it; the hint line under the inputs then shows the converted magnetic wind. Variation is ignored and disabled in MAG mode, and a blank variation counts as 0.
 
 **Sign conventions** (set by `windComponents`, relied on by `update`):
 - `angle = windDirection - runwayHeading`; wind direction is where the wind comes *from*.
 - `headwind` positive = headwind, negative = tailwind (the tile label flips to "Tailwind" and shows the absolute value).
 - `crosswind` positive = from the right, negative = from the left.
 
-**Validation is partial on purpose.** `readDegrees` returns `null` outside 0–360. The runway and wind arrow rotate independently whenever their own input is valid; the result tiles go blank (`showBlank`) if any of the three inputs is invalid.
+**Validation is partial on purpose.** `readDegrees` returns `null` outside 0–360. The runway and wind arrow rotate independently whenever their own input is valid; the result tiles go blank (`showBlank`) if heading, direction, speed or (in TRUE mode) variation is invalid.
 
 **Rounding.** `roundKnots` first trims floating-point noise with `toFixed(6)` (so 7.4999999 becomes 7.5), then rounds the absolute value and reapplies the sign, so a left and a right crosswind of the same strength display the same number. Don't replace it with a bare `Math.round`.
 
 **SVG compass.** The `viewBox` is 200×200 and everything rotates about (100, 100).
 - `#runway` and `#wind` are rotated with CSS `transform`. `rotateTo` keeps an accumulated angle in `turned` and applies the shortest signed delta, so 350° → 010° turns 20° rather than swinging 340° back. Setting `rotate(${degrees}deg)` directly would break that.
 - The markings for one runway end are drawn once in `#rwy-end` and mirrored with `<use transform="rotate(180 100 100)">`; edit markings only in `#rwy-end`.
-- `#num-near` is the number of the runway you are lined up on (drawn at the bottom end before rotation); `#num-far` is the reciprocal. `runwayNumber` maps heading/10 to 01–36, with 0° and 360° both giving 36.
+- `#num-near` is the number of the runway you are lined up on (drawn at the bottom end before rotation); `#num-far` is the reciprocal (drawn at the top end). `runwayNumber` maps heading/10 to 01–36, with 0° and 360° both giving 36.
+- The numbers are counter-rotated by `-turned.runway` (CSS `transform` with `transform-box: fill-box`, same transition as the runway) so they always read upright and 09 never looks like 60. The centreline dashes stop short of each end to leave room for an upright number.
 
 **Theming.** Colors are CSS custom properties on `:root` with a `prefers-color-scheme: dark` override; SVG parts take their colors through classes (`.surface`, `.marking`, `.wind`), so new elements should use the variables rather than hard-coded colors.
