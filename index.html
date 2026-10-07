@@ -41,7 +41,7 @@
   }
   h1 {
     margin: 0 0 16px;
-    font-size: 1.4rem;
+    font-size: 1.9rem;
     text-align: center;
   }
   .inputs {
@@ -103,9 +103,13 @@
     font-size: 11px;
     font-weight: 700;
     text-anchor: middle;
+  }
+  /* painted like a real runway: each number faces the aircraft landing on it,
+     so the far-end number is turned 180° in place */
+  #num-far {
     transform-box: fill-box;
     transform-origin: center;
-    transition: transform 0.4s ease;
+    transform: rotate(180deg);
   }
   .wind { fill: var(--accent); }
   #runway, #wind {
@@ -231,7 +235,7 @@
       </g>
       <use href="#rwy-end" transform="rotate(180 100 100)"/>
       <!-- the number you see when lined up on this heading sits at the near end;
-           update() counter-rotates both numbers so they always read upright -->
+           both numbers turn with the runway, each facing its own approach -->
       <text id="num-near" class="rwy-number" x="100" y="154">27</text>
       <text id="num-far" class="rwy-number" x="100" y="54">09</text>
     </g>
@@ -349,10 +353,6 @@
       rotateTo('runway', heading);
       el('num-near').textContent = runwayNumber(heading);
       el('num-far').textContent = runwayNumber(heading + 180);
-      // Undo the runway's rotation on the numbers so 09 never reads as 60.
-      const upright = `rotate(${-turned.runway}deg)`;
-      el('num-near').style.transform = upright;
-      el('num-far').style.transform = upright;
     }
     if (direction !== null) rotateTo('wind', direction);
 
