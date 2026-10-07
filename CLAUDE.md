@@ -4,23 +4,29 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## What this is
 
-A crosswind calculator: a single self-contained `index.html` (inline CSS and JS, no dependencies, no build step, no package manager). It is a learning project and the footer says "not for operational use" — keep that disclaimer.
+A crosswind calculator: a single self-contained `index.html` (inline CSS and JS, no dependencies, no build step, no package manager). There is no linter and no test suite. The footer says "Learning project — not for operational use"; keep that disclaimer.
 
-There is no linter and no test suite.
+It is also a **practice project**. The owner is a commercial airline pilot with no coding background. They use this repository to learn how Claude Code works and, above all, how GitHub fits in (branches, commits, pushes, pull requests). The aviation side is their expertise; the software side is not.
 
-## Running it
+## Working with the owner
 
-Preview through the `crosswind` configuration in `.claude/launch.json` (use the preview tool, not a shell command). It runs `.claude/serve.ps1`, a small PowerShell `HttpListener` static server on `http://localhost:8765/` that serves the repo root with `Cache-Control: no-store`, so a plain reload always picks up edits.
+- They give plain-language instructions only. Never ask them to write, edit or run code or commands; do it yourself and report the result in plain words.
+- When a technical term comes up (branch, commit, push, merge, pull request…), use it, then explain it briefly. When they are learning something about Claude Code or GitHub, say *why* it works that way, not just what to click.
+- Answer first, keep it short, and ask instead of guessing when a request is unclear.
+- After a change, show the result rather than only describing it: in a cloud session, send the rendered `index.html` to the chat, or offer to publish it as a private claude.ai Artifact (one link that is updated after each change).
+- They also keep a related Claude chat project called "Claude Tutor". Claude Code cannot read it; if something from it matters, ask them to paste it.
 
-The server only sets a `Content-Type` for `.html`. If the page is ever split into separate `.css`/`.js` files, `serve.ps1` needs MIME types for them too.
+## Git and GitHub
 
-To run it by hand:
+- Repository: `nibbalobster/Crosswind-calculator`, **private**. Default branch `main`; day-to-day work happens on the `First-changes` branch and reaches `main` through a pull request. Earlier work was merged this way.
+- Only commit and push to the branch you were given, and only open a pull request when asked. After pushing, say what changed and that it is not on `main` until merged.
+- GitHub Pages (automatic hosting of the page) is not available while the repo is private on a free plan. If they ask how to get a public web link, explain that trade-off rather than assuming they want the repo made public.
 
-```bash
-powershell -NoProfile -ExecutionPolicy Bypass -File .claude/serve.ps1
-```
+## Running and checking it
 
-Opening `index.html` directly from disk also works.
+On the owner's Windows machine, preview through the `crosswind` configuration in `.claude/launch.json` (use the preview tool, not a shell command). It runs `.claude/serve.ps1`, a small PowerShell `HttpListener` static server on `http://localhost:8765/` that serves the repo root with `Cache-Control: no-store`, so a plain reload always picks up edits. It only sets a `Content-Type` for `.html`; if the page is ever split into separate `.css`/`.js` files, `serve.ps1` needs MIME types for them too. Opening `index.html` directly from disk also works.
+
+In a cloud (Linux) session there is no PowerShell: load `file://…/index.html` with the pre-installed headless Chromium via Playwright, fill the inputs, read the result tiles and take screenshots (check a ~320px-wide viewport and dark mode). Since there are no tests, check a few wind cases by hand, e.g. runway 270, wind 300/15 → 13 kt headwind, 8 kt from the right.
 
 ## How index.html fits together
 
