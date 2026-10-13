@@ -4,6 +4,11 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Crosswind Calculator</title>
+<meta name="theme-color" content="#0b6bcb">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" href="icons/icon.svg" type="image/svg+xml">
+<link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
+<meta name="apple-mobile-web-app-title" content="Crosswind">
 <style>
   :root {
     --bg: #f5f6f8;
@@ -146,6 +151,37 @@
     min-height: 1.2em;
   }
   .tile .gust { font-weight: 600; }
+  .update-banner {
+    position: fixed;
+    left: 50%;
+    bottom: calc(16px + env(safe-area-inset-bottom));
+    transform: translateX(-50%);
+    width: calc(100% - 32px);
+    max-width: 448px;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 12px 12px 12px 16px;
+    background: var(--card);
+    color: var(--text);
+    border: 1px solid var(--line);
+    border-radius: 14px;
+    box-shadow: 0 6px 24px rgba(0, 0, 0, 0.18);
+    font-size: 0.95rem;
+  }
+  .update-banner[hidden] { display: none; }
+  .update-banner span { flex: 1; }
+  .update-banner button {
+    font: inherit;
+    font-weight: 600;
+    padding: 8px 14px;
+    border: 0;
+    border-radius: 10px;
+    background: var(--accent);
+    color: var(--bg);
+    cursor: pointer;
+  }
+  body:has(.update-banner:not([hidden])) main { padding-bottom: 96px; }
   footer {
     margin-top: 22px;
     font-size: 0.8rem;
@@ -262,6 +298,11 @@
 
   <footer>Learning project — not for operational use.</footer>
 </main>
+
+<div class="update-banner" id="update-banner" role="status" hidden>
+  <span>A new version is available.</span>
+  <button type="button" id="update-reload">Reload</button>
+</div>
 
 <script>
   // Returns { headwind, crosswind } in knots.
@@ -383,6 +424,51 @@
     referenceInput, variationInput, variationSideInput].forEach((input) =>
     input.addEventListener('input', update));
   update();
+
+  // Offline support and update notice. Service workers need http(s), so
+  // nothing happens when the file is opened straight from disk.
+  if ('serviceWorker' in navigator && location.protocol !== 'file:') {
+    const banner = el('update-banner');
+    let waitingWorker = null;
+    const offerUpdate = (worker) => {
+      waitingWorker = worker;
+      banner.hidden = false;
+    };
+
+    navigator.serviceWorker.register('sw.js').then((registration) => {
+      // A new version may already be installed and waiting from an earlier visit.
+      if (registration.waiting && navigator.serviceWorker.controller) {
+        offerUpdate(registration.waiting);
+      }
+      registration.addEventListener('updatefound', () => {
+        const worker = registration.installing;
+        worker.addEventListener('statechange', () => {
+          // Only an update, not the very first install, gets the banner.
+          if (worker.state === 'installed' && navigator.serviceWorker.controller) {
+            offerUpdate(worker);
+          }
+        });
+      });
+      // An installed app can stay open for days; look again when it comes back.
+      document.addEventListener('visibilitychange', () => {
+        if (document.visibilityState === 'visible') registration.update();
+      });
+    });
+
+    // Reload only after the user asked; the first install also changes the
+    // controller (clients.claim) and must not reload the page.
+    let updateRequested = false;
+    el('update-reload').addEventListener('click', () => {
+      if (!waitingWorker) return;
+      updateRequested = true;
+      waitingWorker.postMessage('skipWaiting');
+    });
+    navigator.serviceWorker.addEventListener('controllerchange', () => {
+      if (!updateRequested) return;
+      updateRequested = false;
+      location.reload();
+    });
+  }
 </script>
 </body>
 </html>

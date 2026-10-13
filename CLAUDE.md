@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## What this is
 
-A crosswind calculator: a single self-contained `index.html` (inline CSS and JS, no dependencies, no build step, no package manager). There is no linter and no test suite. The footer says "Learning project — not for operational use"; keep that disclaimer.
+A crosswind calculator: one page, `index.html` (inline CSS and JS, no dependencies, no build step, no package manager), made installable as an offline web app (PWA) by `manifest.webmanifest`, `sw.js` and `icons/`. There is no linter and no test suite. The footer says "Learning project — not for operational use"; keep that disclaimer.
 
 It is also a **practice project**. The owner is a commercial airline pilot with no coding background. They use this repository to learn how Claude Code works and, above all, how GitHub fits in (branches, commits, pushes, pull requests). The aviation side is their expertise; the software side is not.
 
@@ -27,9 +27,9 @@ It is also a **practice project**. The owner is a commercial airline pilot with 
 
 ## Running and checking it
 
-On the owner's Windows machine, preview through the `crosswind` configuration in `.claude/launch.json` (use the preview tool, not a shell command). It runs `.claude/serve.ps1`, a small PowerShell `HttpListener` static server on `http://localhost:8765/` that serves the repo root with `Cache-Control: no-store`, so a plain reload always picks up edits. It only sets a `Content-Type` for `.html`; if the page is ever split into separate `.css`/`.js` files, `serve.ps1` needs MIME types for them too. Opening `index.html` directly from disk also works.
+On the owner's Windows machine, preview through the `crosswind` configuration in `.claude/launch.json` (use the preview tool, not a shell command). It runs `.claude/serve.ps1`, a small PowerShell `HttpListener` static server on `http://localhost:8765/` that serves the repo root with `Cache-Control: no-store`, so a plain reload always picks up edits. It sets a `Content-Type` per extension from a small table (`.html`, `.js`, `.webmanifest`, `.svg`, `.png`); a new file type needs an entry there, and the service worker in particular is rejected unless `.js` is served as JavaScript. Opening `index.html` directly from disk also works, but without offline support or install (service workers need http(s) or localhost).
 
-In a cloud (Linux) session there is no PowerShell: load `file://…/index.html` with the pre-installed headless Chromium via Playwright, fill the inputs, read the result tiles and take screenshots (check a ~320px-wide viewport and dark mode). Since there are no tests, check a few wind cases by hand, e.g. runway 270, wind 300/15 → 13 kt headwind, 8 kt from the right.
+In a cloud (Linux) session there is no PowerShell: serve the repo with `python3 -m http.server 8765` (or load `file://…/index.html` when the service worker doesn't matter) and drive the pre-installed headless Chromium via Playwright; fill the inputs, read the result tiles and take screenshots (check a ~320px-wide viewport and dark mode). Since there are no tests, check a few wind cases by hand, e.g. runway 270, wind 300/15 → 13 kt headwind, 8 kt from the right.
 
 ## How index.html fits together
 
@@ -51,5 +51,12 @@ Everything flows through `update()`, which runs on every `input` event and once 
 - The markings for one runway end are drawn once in `#rwy-end` and mirrored with `<use transform="rotate(180 100 100)">`; edit markings only in `#rwy-end`.
 - `#num-near` is the number of the runway you are lined up on (drawn at the bottom end before rotation); `#num-far` is the reciprocal (drawn at the top end). `runwayNumber` maps heading/10 to 01–36, with 0° and 360° both giving 36.
 - The numbers turn with the runway and are painted as on a real runway: each one faces the aircraft landing on that end, so from the top of the screen `#num-near` reads upright when lined up on its heading and `#num-far` is turned 180° in place (CSS rule `#num-far`, `transform-box: fill-box`). This replaced an earlier version that counter-rotated them to stay screen-upright; the owner asked for the realistic look. The centreline dashes stop short of each end to leave room for the number.
+
+**Installable app (PWA).**
+- `sw.js` precaches every file in its `FILES` list and serves cache-first, so the app opens with no signal. Any new file the page needs must be added to `FILES`.
+- **Bump `VERSION` in `sw.js` whenever any cached file changes.** Because of cache-first, edits to `index.html` alone never reach installed copies: the browser only looks for an update when `sw.js` itself changes.
+- A new worker does not take over by itself (no `skipWaiting` on install). The page shows the `#update-banner` ("A new version is available"); tapping Reload posts `'skipWaiting'`, and the page reloads on `controllerchange` only after that tap, because the first install's `clients.claim()` also fires `controllerchange`. The page also re-checks for updates whenever it becomes visible again.
+- All paths are relative (`./`), so the app also works from a sub-folder such as a GitHub Pages URL.
+- Icons: `icons/icon.svg` is the source drawing (also the favicon); the PNGs (192, 512, maskable 512 with the artwork shrunk into the safe zone, 180 Apple touch icon) are rendered from it. Redraw them from the SVG if the design changes.
 
 **Theming.** Colors are CSS custom properties on `:root` with a `prefers-color-scheme: dark` override; SVG parts take their colors through classes (`.surface`, `.marking`, `.wind`), so new elements should use the variables rather than hard-coded colors.
