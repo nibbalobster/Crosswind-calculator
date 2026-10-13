@@ -25,6 +25,10 @@ It is also a **practice project**. The owner has no coding background and uses t
 - Never commit to or merge into `main`: the owner merges through the pull request. Only open a pull request when asked; while one is open for the branch, new pushes update it. After pushing, say that the change is not on `main` until merged.
 - GitHub Pages (automatic hosting of the page) is not available while the repo is private on a free plan. If they ask how to get a public web link, explain that trade-off rather than assuming they want the repo made public.
 
+## OpenSpec (spec-driven planning)
+
+OpenSpec is set up for Claude Code only (`openspec init --tools claude`, default `core` profile). Plans and specs live in `openspec/` (`specs/` = how the app behaves now, `changes/` = proposed changes, `changes/archive/` = finished ones); the `/opsx:` commands come from `.claude/commands/opsx/` and their instructions from `.claude/skills/openspec-*/`. Don't hand-edit those generated files; `openspec update` regenerates them. The commands call the `openspec` program, which a fresh cloud session doesn't have: install it with `npm install -g @fission-ai/openspec` (needs Node.js 20.19+) and run it with `OPENSPEC_TELEMETRY=0` so no usage statistics are sent.
+
 ## Running and checking it
 
 On a local Windows machine, preview through the `crosswind` configuration in `.claude/launch.json` (use the preview tool, not a shell command). It runs `.claude/serve.ps1`, a small PowerShell `HttpListener` static server on `http://localhost:8765/` that serves the repo root with `Cache-Control: no-store`, so a plain reload always picks up edits. It sets a `Content-Type` per extension from a small table (`.html`, `.js`, `.webmanifest`, `.svg`, `.png`); a new file type needs an entry there, and the service worker in particular is rejected unless `.js` is served as JavaScript. Opening `index.html` directly from disk also works, but without offline support or install (service workers need http(s) or localhost).
