@@ -6,7 +6,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 A crosswind calculator: one page, `index.html` (inline CSS and JS, no dependencies, no build step, no package manager), made installable as an offline web app (PWA) by `manifest.webmanifest`, `sw.js` and `icons/`. There is no linter and no test suite. The footer says "Learning project — not for operational use"; keep that disclaimer.
 
-It is also a **practice project**. The owner is a commercial airline pilot with no coding background. They use this repository to learn how Claude Code works and, above all, how GitHub fits in (branches, commits, pushes, pull requests). The aviation side is their expertise; the software side is not.
+It is also a **practice project**. The owner has no coding background and uses this repository to learn how Claude Code works and, above all, how GitHub fits in (branches, commits, pushes, pull requests).
 
 ## Working with the owner
 
@@ -14,7 +14,8 @@ It is also a **practice project**. The owner is a commercial airline pilot with 
 - When a technical term comes up (branch, commit, push, merge, pull request…), use it, then explain it briefly. When they are learning something about Claude Code or GitHub, say *why* it works that way, not just what to click.
 - Answer first, keep it short, and ask instead of guessing when a request is unclear.
 - After a change, show the result rather than only describing it: in a cloud session, send the rendered `index.html` to the chat, or offer to publish it as a private claude.ai Artifact (one link that is updated after each change).
-- They also keep a related Claude chat project called "Claude Tutor". Claude Code cannot read it; if something from it matters, ask them to paste it.
+- Claude Code cannot read their claude.ai chats or projects; if something from one matters, ask them to paste it.
+- This repository is meant to be public: keep personal details (names, email addresses, employer, location) out of every file and commit message.
 
 ## Git and GitHub
 
@@ -26,7 +27,7 @@ It is also a **practice project**. The owner is a commercial airline pilot with 
 
 ## Running and checking it
 
-On the owner's Windows machine, preview through the `crosswind` configuration in `.claude/launch.json` (use the preview tool, not a shell command). It runs `.claude/serve.ps1`, a small PowerShell `HttpListener` static server on `http://localhost:8765/` that serves the repo root with `Cache-Control: no-store`, so a plain reload always picks up edits. It sets a `Content-Type` per extension from a small table (`.html`, `.js`, `.webmanifest`, `.svg`, `.png`); a new file type needs an entry there, and the service worker in particular is rejected unless `.js` is served as JavaScript. Opening `index.html` directly from disk also works, but without offline support or install (service workers need http(s) or localhost).
+On a local Windows machine, preview through the `crosswind` configuration in `.claude/launch.json` (use the preview tool, not a shell command). It runs `.claude/serve.ps1`, a small PowerShell `HttpListener` static server on `http://localhost:8765/` that serves the repo root with `Cache-Control: no-store`, so a plain reload always picks up edits. It sets a `Content-Type` per extension from a small table (`.html`, `.js`, `.webmanifest`, `.svg`, `.png`); a new file type needs an entry there, and the service worker in particular is rejected unless `.js` is served as JavaScript. Opening `index.html` directly from disk also works, but without offline support or install (service workers need http(s) or localhost).
 
 In a cloud (Linux) session there is no PowerShell: serve the repo with `python3 -m http.server 8765` (or load `file://…/index.html` when the service worker doesn't matter) and drive the pre-installed headless Chromium via Playwright; fill the inputs, read the result tiles and take screenshots (check a ~320px-wide viewport and dark mode). Since there are no tests, check a few wind cases by hand, e.g. runway 270, wind 300/15 → 13 kt headwind, 8 kt from the right.
 
