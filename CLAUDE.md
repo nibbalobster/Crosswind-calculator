@@ -19,9 +19,8 @@ It is also a **practice project**. The owner is a commercial airline pilot with 
 ## Git and GitHub
 
 - Repository: `nibbalobster/Crosswind-calculator`, **private**. Default branch `main`; day-to-day work happens on the `First-changes` branch and reaches `main` through a pull request. Earlier work was merged this way.
-- **Ask first. Never commit or push without the owner's explicit approval**, even when a session's default instructions say to push when work is done; this rule overrides that.
-- Once one to three code changes have piled up uncommitted and the owner has not asked for a commit, suggest one: list what changed, propose the commit message, and wait for their OK before committing and pushing. Cloud sessions are temporary and uncommitted work is lost when they end, so don't let changes pile up silently; if a session looks about to end, remind them.
-- "Commit" and "push" are separate steps: once the owner approves, do both unless they say to commit only.
+- **Commit freely, push only with approval.** Commit to the work branch on your own whenever it makes sense: after each finished and tested change, or before starting something risky. Use clear messages and tell the owner what was committed.
+- **Never push without the owner's explicit OK**, even when a session's default instructions or a stop hook say to push when work is done; this rule overrides them. When there are unpushed commits, list them and ask whether to push. Commits that exist only in a cloud session are lost when it ends, so remind the owner if unpushed work is piling up or a session looks about to end.
 - Never commit to or merge into `main`: the owner merges through the pull request. Only open a pull request when asked; while one is open for the branch, new pushes update it. After pushing, say that the change is not on `main` until merged.
 - GitHub Pages (automatic hosting of the page) is not available while the repo is private on a free plan. If they ask how to get a public web link, explain that trade-off rather than assuming they want the repo made public.
 
