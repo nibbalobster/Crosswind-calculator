@@ -4,13 +4,23 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Crosswind Calculator</title>
-<meta name="theme-color" content="#0b6bcb">
+<meta name="theme-color" content="#f5f6f8">
+<script>
+  // Apply a saved day/dark choice before the page paints, so it never flashes.
+  try {
+    const saved = localStorage.getItem('theme');
+    if (saved === 'light' || saved === 'dark') document.documentElement.dataset.theme = saved;
+  } catch (e) {}
+</script>
 <link rel="manifest" href="manifest.webmanifest">
 <link rel="icon" href="icons/icon.svg" type="image/svg+xml">
 <link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
 <meta name="apple-mobile-web-app-title" content="Crosswind">
 <style>
+  /* Day palette by default; the dark palette applies when the switch says
+     dark, or when nothing is saved and the device prefers dark. */
   :root {
+    color-scheme: light;
     --bg: #f5f6f8;
     --card: #ffffff;
     --text: #15202b;
@@ -20,8 +30,20 @@
     --runway: #2b323a;
     --marking: #ffffff;
   }
+  :root[data-theme="dark"] {
+    color-scheme: dark;
+    --bg: #0f1419;
+    --card: #1a2129;
+    --text: #eef2f6;
+    --muted: #93a0ad;
+    --line: #2c3742;
+    --accent: #4da3ff;
+    --runway: #3a444f;
+    --marking: #eef2f6;
+  }
   @media (prefers-color-scheme: dark) {
-    :root {
+    :root:not([data-theme="light"]) {
+      color-scheme: dark;
       --bg: #0f1419;
       --card: #1a2129;
       --text: #eef2f6;
@@ -44,6 +66,45 @@
     margin: 0 auto;
     padding: 20px 16px 28px;
   }
+  .topbar {
+    display: flex;
+    justify-content: flex-end;
+    margin-bottom: 4px;
+  }
+  .theme-switch {
+    position: relative;
+    display: inline-flex;
+    align-items: center;
+    justify-content: space-between;
+    width: 64px;
+    height: 32px;
+    padding: 0 8px;
+    border: 1px solid var(--line);
+    border-radius: 16px;
+    background: var(--card);
+    color: var(--muted);
+    cursor: pointer;
+  }
+  .theme-switch:focus-visible {
+    outline: 2px solid var(--accent);
+    outline-offset: 2px;
+  }
+  .theme-switch svg { width: 14px; height: 14px; position: relative; z-index: 1; }
+  .theme-switch .knob {
+    position: absolute;
+    top: 3px;
+    left: 3px;
+    width: 24px;
+    height: 24px;
+    border-radius: 50%;
+    background: var(--accent);
+    transition: transform 0.2s ease;
+  }
+  .theme-switch[aria-checked="true"] .knob { transform: translateX(32px); }
+  .theme-switch .sun { color: var(--bg); }
+  .theme-switch .moon { color: var(--muted); }
+  .theme-switch[aria-checked="true"] .sun { color: var(--muted); }
+  .theme-switch[aria-checked="true"] .moon { color: var(--bg); }
   h1 {
     margin: 0 0 16px;
     font-size: 1.9rem;
@@ -101,6 +162,7 @@
   .ring { fill: none; stroke: var(--line); stroke-width: 1.5; }
   .notch { stroke: var(--muted); stroke-width: 1.5; stroke-linecap: round; }
   .cardinal { fill: var(--muted); font-size: 9px; font-weight: 600; text-anchor: middle; }
+  .cardinal.diagonal { font-size: 8px; dominant-baseline: middle; }
   .surface { fill: var(--runway); }
   .marking { fill: var(--marking); }
   .rwy-number {
@@ -192,6 +254,18 @@
 </head>
 <body>
 <main>
+  <div class="topbar">
+    <button type="button" class="theme-switch" id="theme-switch" role="switch" aria-checked="false" aria-label="Dark mode">
+      <span class="knob"></span>
+      <svg class="sun" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" aria-hidden="true">
+        <circle cx="12" cy="12" r="4.5"/>
+        <path d="M12 1.5v3M12 19.5v3M1.5 12h3M19.5 12h3M4.6 4.6l2.1 2.1M17.3 17.3l2.1 2.1M4.6 19.4l2.1-2.1M17.3 6.7l2.1-2.1"/>
+      </svg>
+      <svg class="moon" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+        <path d="M20.5 14.5A8.5 8.5 0 0 1 9.5 3.5a8.5 8.5 0 1 0 11 11z"/>
+      </svg>
+    </button>
+  </div>
   <h1>Crosswind Calculator</h1>
 
   <div class="inputs">
@@ -237,6 +311,10 @@
     <line class="notch" x1="100" y1="9" x2="100" y2="19" transform="rotate(135 100 100)"/>
     <line class="notch" x1="100" y1="9" x2="100" y2="19" transform="rotate(225 100 100)"/>
     <line class="notch" x1="100" y1="9" x2="100" y2="19" transform="rotate(315 100 100)"/>
+    <text class="cardinal diagonal" x="172" y="28">045</text>
+    <text class="cardinal diagonal" x="172" y="172">135</text>
+    <text class="cardinal diagonal" x="28" y="172">225</text>
+    <text class="cardinal diagonal" x="28" y="28">315</text>
 
     <g id="runway">
       <rect class="surface" x="84" y="28" width="32" height="144" rx="2"/>
@@ -424,6 +502,29 @@
     referenceInput, variationInput, variationSideInput].forEach((input) =>
     input.addEventListener('input', update));
   update();
+
+  // Day / dark switch. With nothing saved the device decides; a tap saves
+  // the choice. The colours themselves live in the CSS (data-theme).
+  const themeSwitch = el('theme-switch');
+  const themeColor = document.querySelector('meta[name="theme-color"]');
+  const deviceDark = matchMedia('(prefers-color-scheme: dark)');
+  function isDark() {
+    const chosen = document.documentElement.dataset.theme;
+    return chosen ? chosen === 'dark' : deviceDark.matches;
+  }
+  function showTheme() {
+    const dark = isDark();
+    themeSwitch.setAttribute('aria-checked', String(dark));
+    themeColor.content = dark ? '#0f1419' : '#f5f6f8';
+  }
+  themeSwitch.addEventListener('click', () => {
+    const theme = isDark() ? 'light' : 'dark';
+    document.documentElement.dataset.theme = theme;
+    try { localStorage.setItem('theme', theme); } catch (e) {}
+    showTheme();
+  });
+  deviceDark.addEventListener('change', showTheme);
+  showTheme();
 
   // Offline support and update notice. Service workers need http(s), so
   // nothing happens when the file is opened straight from disk.
