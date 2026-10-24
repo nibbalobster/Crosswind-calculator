@@ -1,7 +1,7 @@
 // Offline support. Bump VERSION whenever any cached file changes: the browser
 // only notices an update when this file's bytes change, and the page then
 // shows the "new version available" banner.
-const VERSION = 'v2';
+const VERSION = 'v3';
 const CACHE = `crosswind-${VERSION}`;
 const FILES = [
   './',
