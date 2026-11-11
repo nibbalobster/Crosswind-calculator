@@ -171,13 +171,6 @@
     font-weight: 700;
     text-anchor: middle;
   }
-  /* painted like a real runway: each number faces the aircraft landing on it,
-     so the far-end number is turned 180° in place */
-  #num-far {
-    transform-box: fill-box;
-    transform-origin: center;
-    transform: rotate(180deg);
-  }
   .wind { fill: var(--accent); }
   #runway, #wind {
     transform-origin: 100px 100px;
@@ -427,6 +420,18 @@
     return variationSideInput.value === 'E' ? value : -value;
   }
 
+  // Painted like a real runway: each number faces the aircraft landing on it,
+  // so the far-end number is turned 180° about its own centre. Done with the
+  // SVG transform attribute, not CSS transform-box, which Safari on iPhone
+  // mis-places (the far number vanished there).
+  function faceFarEnd() {
+    const far = el('num-far');
+    const box = far.getBBox();
+    const cx = box.x + box.width / 2;
+    const cy = box.y + box.height / 2;
+    far.setAttribute('transform', `rotate(180 ${cx} ${cy})`);
+  }
+
   function runwayNumber(heading) {
     const n = Math.round(heading / 10) % 36 || 36;
     return String(n).padStart(2, '0');
@@ -473,6 +478,7 @@
       el('num-near').textContent = runwayNumber(heading);
       el('num-far').textContent = runwayNumber(heading + 180);
     }
+    faceFarEnd();
     if (direction !== null) rotateTo('wind', direction);
 
     if (heading === null || direction === null || !(speed >= 0)) return showBlank();
