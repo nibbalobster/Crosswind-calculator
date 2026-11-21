@@ -46,7 +46,13 @@ Everything flows through `update()`, which runs on every `input` event and once 
 - `headwind` positive = headwind, negative = tailwind (the tile label flips to "Tailwind" and shows the absolute value).
 - `crosswind` positive = from the right, negative = from the left.
 
-**Validation is partial on purpose.** `readDegrees` returns `null` outside 0–360. The runway and wind arrow rotate independently whenever their own input is valid; the result tiles go blank (`showBlank`) if heading, direction, speed or (in TRUE mode) variation is invalid.
+**Validation is partial on purpose.** `readDegrees` returns `null` outside 0–360, `readKnots` for negatives. The runway and wind arrow rotate independently whenever their own input is valid; the result tiles go blank (`showBlank`) if heading, direction, speed or (in TRUE mode) variation is invalid. A box that holds something unusable (not one that is merely empty) gets `aria-invalid` (red outline) and the first problem is shown in `#message`.
+
+**Message line (`#message`).** Shows an error in red, otherwise the runway-number question: a heading typed as a whole number 1–36 without a leading zero (e.g. `27`) asks "Did you mean runway 27 (270°)?" with a button that fills in 270. `showMessage` skips redrawing an unchanged message, so the button isn't replaced mid-tap (the heading box's `change` event fires as it loses focus).
+
+**Calm and variable wind.** Speed 0 with no stronger gust is calm: no direction needed, both components 0, arrow hidden. The "Variable wind (VRB)" checkbox disables the direction box and shows the worst case: the full speed (and gust) as both tailwind and crosswind.
+
+**Remembered inputs.** Every input (including the VRB checkbox) is saved in `localStorage` under `inputs` on each change and restored before the first `update()`.
 
 **Rounding.** `roundKnots` first trims floating-point noise with `toFixed(6)` (so 7.4999999 becomes 7.5), then rounds the absolute value and reapplies the sign, so a left and a right crosswind of the same strength display the same number. Don't replace it with a bare `Math.round`.
 

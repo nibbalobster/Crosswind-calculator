@@ -29,6 +29,7 @@
     --accent: #0b6bcb;
     --runway: #2b323a;
     --marking: #ffffff;
+    --danger: #c62828;
   }
   :root[data-theme="dark"] {
     color-scheme: dark;
@@ -40,6 +41,7 @@
     --accent: #4da3ff;
     --runway: #3a444f;
     --marking: #eef2f6;
+    --danger: #ff6b6b;
   }
   @media (prefers-color-scheme: dark) {
     :root:not([data-theme="light"]) {
@@ -52,6 +54,7 @@
       --accent: #4da3ff;
       --runway: #3a444f;
       --marking: #eef2f6;
+    --danger: #ff6b6b;
     }
   }
   * { box-sizing: border-box; }
@@ -148,6 +151,48 @@
     font-size: 0.75rem;
     color: var(--muted);
     text-align: center;
+  }
+  .check {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    margin-top: 12px;
+    font-size: 0.9rem;
+    color: var(--text);
+  }
+  .check input {
+    width: 20px;
+    height: 20px;
+    margin: 0;
+    accent-color: var(--accent);
+  }
+  input[aria-invalid="true"],
+  input[aria-invalid="true"]:focus {
+    border-color: var(--danger);
+    outline-color: var(--danger);
+  }
+  .message {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-wrap: wrap;
+    gap: 8px;
+    margin: 10px 0 0;
+    font-size: 0.9rem;
+    font-weight: 600;
+    text-align: center;
+  }
+  .message[hidden] { display: none; }
+  .message.error { color: var(--danger); }
+  .message button {
+    font: inherit;
+    padding: 6px 12px;
+    border: 0;
+    border-radius: 10px;
+    background: var(--accent);
+    color: var(--bg);
+    cursor: pointer;
   }
   input:focus, select:focus {
     outline: 2px solid var(--accent);
@@ -292,6 +337,8 @@
       </span>
     </label>
   </div>
+  <label class="check"><input id="vrb" type="checkbox"> Variable wind (VRB)</label>
+  <p class="message" id="message" role="status" hidden></p>
   <p class="hint" id="hint"></p>
 
   <svg class="compass" viewBox="0 0 200 200" role="img" aria-label="Runway and wind direction">
@@ -356,7 +403,7 @@
     <div class="tile">
       <div class="name" id="head-name">Headwind</div>
       <div class="value" id="head-value">–</div>
-      <div class="unit">kt</div>
+      <div class="unit" id="head-unit">kt</div>
       <div class="gust" id="head-gust"></div>
     </div>
     <div class="tile">
@@ -395,6 +442,9 @@
   const referenceInput = el('reference');
   const variationInput = el('variation');
   const variationSideInput = el('variation-side');
+  const vrbInput = el('vrb');
+  const ALL_INPUTS = [headingInput, directionInput, speedInput, gustInput,
+    referenceInput, variationInput, variationSideInput, vrbInput];
   const HINT = 'ATIS and tower winds are magnetic; METAR and TAF winds are true.';
 
   // Keep a running angle so the symbol turns the short way round (350° → 010°).
@@ -405,9 +455,18 @@
     el(id).style.transform = `rotate(${turned[id]}deg)`;
   }
 
+  // True when the box holds something, even something the browser can't read.
+  const filled = (input) => input.value !== '' || input.validity.badInput;
+
   function readDegrees(input) {
     const value = parseFloat(input.value);
     return value >= 0 && value <= 360 ? value : null;
+  }
+
+  // Knots: 0 or more, otherwise null.
+  function readKnots(input) {
+    const value = parseFloat(input.value);
+    return value >= 0 ? value : null;
   }
 
   // Signed variation in degrees (east positive), 0 for a magnetic wind,
@@ -437,6 +496,9 @@
     return String(n).padStart(2, '0');
   }
 
+  const threeDigits = (degrees) =>
+    String(Math.round(degrees) % 360 || 360).padStart(3, '0');
+
   // sin/cos leave tiny errors (7.4999999 instead of 7.5), so trim them before
   // rounding, and round halves away from zero so left and right match.
   function roundKnots(value) {
@@ -444,34 +506,115 @@
     return Math.sign(value) * Math.round(clean);
   }
 
+  function showResults(headName, head, headUnit, cross, crossUnit, headGust, crossGust) {
+    el('head-name').textContent = headName;
+    el('head-value').textContent = head;
+    el('head-unit').textContent = headUnit;
+    el('cross-value').textContent = cross;
+    el('cross-side').textContent = crossUnit;
+    el('head-gust').textContent = headGust;
+    el('cross-gust').textContent = crossGust;
+  }
+
   function showBlank() {
-    el('head-name').textContent = 'Headwind';
-    el('head-value').textContent = '–';
-    el('cross-value').textContent = '–';
-    el('cross-side').textContent = 'kt';
-    el('head-gust').textContent = '';
-    el('cross-gust').textContent = '';
+    showResults('Headwind', '–', 'kt', '–', 'kt', '', '');
+  }
+
+  // One line under the inputs: an error (red), or a question with a button.
+  function showMessage(text, isError, button) {
+    const message = el('message');
+    // Leave an unchanged message alone, so its button isn't swapped out mid-tap.
+    const key = `${isError ? 'error' : 'info'}|${text || ''}`;
+    if (message.dataset.key === key) return;
+    message.dataset.key = key;
+    message.hidden = !text;
+    message.classList.toggle('error', !!isError);
+    message.textContent = text || '';
+    if (button) {
+      const b = document.createElement('button');
+      b.type = 'button';
+      b.textContent = button.label;
+      b.addEventListener('click', button.action);
+      message.append(b);
+    }
+  }
+
+  // "27" is far more likely to mean runway 27 (270°) than a heading of 027°.
+  // A leading zero ("027") says the heading was meant, so no question then.
+  function runwayNumberQuestion(heading) {
+    const typed = headingInput.value;
+    if (!(Number.isInteger(heading) && heading >= 1 && heading <= 36)) return null;
+    if (typed.startsWith('0')) return null;
+    return {
+      text: `Heading ${threeDigits(heading)}°. Did you mean runway ${typed} (${heading * 10}°)?`,
+      button: {
+        label: `Use ${heading * 10}°`,
+        action: () => {
+          headingInput.value = String(heading * 10);
+          changed();
+        },
+      },
+    };
   }
 
   function update() {
-    const heading = readDegrees(headingInput);
-    const variation = readVariation();
-    const windInput = readDegrees(directionInput);
-    const speed = parseFloat(speedInput.value);
-    const gust = parseFloat(gustInput.value);
-
     const isTrue = referenceInput.value === 'true';
+    const isVrb = vrbInput.checked;
     variationInput.disabled = !isTrue;
     variationSideInput.disabled = !isTrue;
+    directionInput.disabled = isVrb;
+
+    const heading = readDegrees(headingInput);
+    const variation = readVariation();
+    const windInput = isVrb ? null : readDegrees(directionInput);
+    const speed = readKnots(speedInput);
+    const gust = readKnots(gustInput);
+
+    // Anything typed but unusable gets a red box and one message.
+    const problems = [];
+    if (heading === null && filled(headingInput)) {
+      problems.push([headingInput, 'Runway heading must be between 0 and 360°.']);
+    }
+    if (!isVrb && windInput === null && filled(directionInput)) {
+      problems.push([directionInput, 'Wind direction must be between 0 and 360°.']);
+    }
+    if (speed === null && filled(speedInput)) {
+      problems.push([speedInput, 'Wind speed can’t be negative.']);
+    }
+    if (gust === null && filled(gustInput)) {
+      problems.push([gustInput, 'Gust can’t be negative.']);
+    }
+    if (variation === null) {
+      problems.push([variationInput, 'Variation must be between 0 and 180°.']);
+    }
+    ALL_INPUTS.forEach((input) => input.removeAttribute('aria-invalid'));
+    problems.forEach(([input]) => input.setAttribute('aria-invalid', 'true'));
+
+    const question = runwayNumberQuestion(heading);
+    if (problems.length) showMessage(problems[0][1], true);
+    else if (question) showMessage(question.text, false, question.button);
+    else showMessage('');
+
+    // A gust only counts if it is stronger than the steady wind.
+    const hasGust = speed !== null && gust !== null && gust > speed;
+    // Calm (00000KT): no direction needed, both components are zero.
+    const calm = speed === 0 && !hasGust;
 
     // Runway headings are magnetic, so a true wind is converted first:
     // magnetic = true − east variation ("east is least, west is best").
     const direction = windInput !== null && variation !== null
       ? ((windInput - variation) % 360 + 360) % 360
       : null;
-    el('hint').textContent = isTrue && direction !== null
-      ? `Magnetic wind: ${String(Math.round(direction) % 360 || 360).padStart(3, '0')}°`
-      : HINT;
+
+    if (isVrb) {
+      el('hint').textContent = 'Variable wind: worst case, as if it could blow from any direction.';
+    } else if (calm) {
+      el('hint').textContent = 'Calm wind.';
+    } else if (isTrue && direction !== null) {
+      el('hint').textContent = `Magnetic wind: ${threeDigits(direction)}°`;
+    } else {
+      el('hint').textContent = HINT;
+    }
 
     if (heading !== null) {
       rotateTo('runway', heading);
@@ -479,34 +622,71 @@
       el('num-far').textContent = runwayNumber(heading + 180);
     }
     faceFarEnd();
-    if (direction !== null) rotateTo('wind', direction);
+    // The arrow only shows a wind that has a direction.
+    const showArrow = !isVrb && !calm && direction !== null;
+    el('wind').style.display = showArrow ? '' : 'none';
+    if (showArrow) rotateTo('wind', direction);
 
-    if (heading === null || direction === null || !(speed >= 0)) return showBlank();
+    if (heading === null || speed === null || variation === null) return showBlank();
+
+    if (calm) return showResults('Headwind', 0, 'kt', 0, 'kt calm', '', '');
+
+    if (isVrb) {
+      // Any direction is possible, so the full wind can be a tailwind or a crosswind.
+      const peak = hasGust ? `gust ${Math.round(gust)}` : '';
+      return showResults('Tailwind', Math.round(speed), 'kt worst case',
+        Math.round(speed), 'kt worst case', peak, peak);
+    }
+
+    if (direction === null) return showBlank();
 
     const result = windComponents(heading, direction, speed);
     const head = roundKnots(result.headwind);
     const cross = roundKnots(result.crosswind);
-
-    el('head-name').textContent = head < 0 ? 'Tailwind' : 'Headwind';
-    el('head-value').textContent = Math.abs(head);
-    el('cross-value').textContent = Math.abs(cross);
-    el('cross-side').textContent =
-      cross > 0 ? 'kt from right' : cross < 0 ? 'kt from left' : 'kt';
-
-    // A gust only counts if it is stronger than the steady wind.
-    if (gust > speed) {
+    let headGust = '';
+    let crossGust = '';
+    if (hasGust) {
       const peak = windComponents(heading, direction, gust);
-      el('head-gust').textContent = `gust ${Math.abs(roundKnots(peak.headwind))}`;
-      el('cross-gust').textContent = `gust ${Math.abs(roundKnots(peak.crosswind))}`;
-    } else {
-      el('head-gust').textContent = '';
-      el('cross-gust').textContent = '';
+      headGust = `gust ${Math.abs(roundKnots(peak.headwind))}`;
+      crossGust = `gust ${Math.abs(roundKnots(peak.crosswind))}`;
     }
+    showResults(head < 0 ? 'Tailwind' : 'Headwind', Math.abs(head), 'kt',
+      Math.abs(cross), cross > 0 ? 'kt from right' : cross < 0 ? 'kt from left' : 'kt',
+      headGust, crossGust);
   }
 
-  [headingInput, directionInput, speedInput, gustInput,
-    referenceInput, variationInput, variationSideInput].forEach((input) =>
-    input.addEventListener('input', update));
+  // The last entries are kept on this device, so the app reopens where you left it.
+  function saveInputs() {
+    const values = {};
+    ALL_INPUTS.forEach((input) => {
+      values[input.id] = input.type === 'checkbox' ? input.checked : input.value;
+    });
+    try { localStorage.setItem('inputs', JSON.stringify(values)); } catch (e) {}
+  }
+  function restoreInputs() {
+    let values = null;
+    try { values = JSON.parse(localStorage.getItem('inputs')); } catch (e) {}
+    if (!values || typeof values !== 'object') return;
+    ALL_INPUTS.forEach((input) => {
+      if (!(input.id in values)) return;
+      const value = values[input.id];
+      if (input.type === 'checkbox') input.checked = value === true;
+      else if (input.tagName === 'SELECT') {
+        if ([...input.options].some((o) => o.value === value)) input.value = value;
+      } else if (typeof value === 'string') input.value = value;
+    });
+  }
+
+  function changed() {
+    update();
+    saveInputs();
+  }
+
+  ALL_INPUTS.forEach((input) => {
+    input.addEventListener('input', changed);
+    input.addEventListener('change', changed);
+  });
+  restoreInputs();
   update();
 
   // Day / dark switch. With nothing saved the device decides; a tap saves
