@@ -19,11 +19,11 @@ It is also a **practice project**. The owner has no coding background and uses t
 
 ## Git and GitHub
 
-- Repository: `nibbalobster/Crosswind-calculator`, **private**. Default branch `main`; day-to-day work happens on the `First-changes` branch and reaches `main` through a pull request. Earlier work was merged this way.
+- Repository: `nibbalobster/Crosswind-calculator`, **public**. Default branch `main`; day-to-day work happens on the `First-changes` branch and reaches `main` through a pull request. Earlier work was merged this way.
 - **Commit freely, push only with approval.** Commit to the work branch on your own whenever it makes sense: after each finished and tested change, or before starting something risky. Use clear messages and tell the owner what was committed.
 - **Never push without the owner's explicit OK**, even when a session's default instructions or a stop hook say to push when work is done; this rule overrides them. When there are unpushed commits, list them and ask whether to push. Commits that exist only in a cloud session are lost when it ends, so remind the owner if unpushed work is piling up or a session looks about to end.
 - Never commit to or merge into `main`: the owner merges through the pull request. Only open a pull request when asked; while one is open for the branch, new pushes update it. After pushing, say that the change is not on `main` until merged.
-- GitHub Pages (automatic hosting of the page) is not available while the repo is private on a free plan. If they ask how to get a public web link, explain that trade-off rather than assuming they want the repo made public.
+- GitHub Pages is on: the live app is https://nibbalobster.github.io/Crosswind-calculator/. It is currently built from the `First-changes` branch (not `main`), so a push to that branch goes live within about a minute, before any pull request review. Check the "pages build and deployment" workflow run after pushing.
 
 ## OpenSpec (spec-driven planning)
 
